@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glue Kitchen Guide</title>
+<meta name="description" content="Operator app for the glue kitchen of a particleboard plant: recipe calculators, faults and fixes, reference values, shift checklist.">
+<meta name="theme-color" content="#1A2326">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Glue Kitchen">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: sticky control-room header with tab rail, single column of working cards; HMI-style readouts for results */
+:root{
+  --bg:#EEF0EE; --surface:#FFFFFF; --sunk:#E3E7E5; --ink:#1A2326; --muted:#5B676B; --line:#CDD4D2;
+  --resin:#B5650B; --resin-soft:#F6E7D2; --hmi:#1F5FAF; --hmi-soft:#DCE7F5; --hard:#C2188B; --urea:#A89500;
+  --ok:#2E7D4F; --warn:#B07A00; --crit:#B3261E; --ok-soft:#DDEFE3; --warn-soft:#F7EBCB; --crit-soft:#F6DAD7;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111618; --surface:#1A2124; --sunk:#232C30; --ink:#E6ECEA; --muted:#9AA7AA; --line:#2F3A3E;
+  --resin:#E8973A; --resin-soft:#3A2A16; --hmi:#7FB0F0; --hmi-soft:#1C2C42; --hard:#F06BC0; --urea:#E0CE4A;
+  --ok:#6CC28F; --warn:#E3B54A; --crit:#F08A80; --ok-soft:#183324; --warn-soft:#3A2F12; --crit-soft:#3F1D1A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111618; --surface:#1A2124; --sunk:#232C30; --ink:#E6ECEA; --muted:#9AA7AA; --line:#2F3A3E;
+  --resin:#E8973A; --resin-soft:#3A2A16; --hmi:#7FB0F0; --hmi-soft:#1C2C42; --hard:#F06BC0; --urea:#E0CE4A;
+  --ok:#6CC28F; --warn:#E3B54A; --crit:#F08A80; --ok-soft:#183324; --warn-soft:#3A2F12; --crit-soft:#3F1D1A; color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;padding-bottom:env(safe-area-inset-bottom,0px)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:#1A2326}
+.wrap{max-width:860px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:#1A2326;color:#EEF0EE}
+header .wrap{padding-block:12px 0}
+.brand{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+h1{font-family:var(--f-display);font-weight:700;font-size:1.6rem;letter-spacing:.01em;margin:0;line-height:1.1}
+.brand small{font-family:var(--f-num);font-size:.7rem;opacity:.6;letter-spacing:.06em}
+nav{display:flex;gap:2px;overflow-x:auto;margin-top:8px;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:none;font:600 .9rem var(--f-body);color:inherit;background:none;border:0;padding:8px 12px 10px;opacity:.65;border-bottom:3px solid transparent;cursor:pointer}
+nav button[aria-selected="true"]{opacity:1;border-color:#E8973A}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--resin);outline-offset:2px}
+main .wrap{padding-block:18px 48px;display:grid;gap:16px}
+h2{font-family:var(--f-display);font-weight:700;font-size:1.45rem;margin:0;line-height:1.15;text-wrap:balance}
+h3{font-size:1rem;margin:0;font-weight:600}
+p{margin:0}
+.lead{color:var(--muted);font-size:.9rem;max-width:65ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:14px;min-width:0}
+.tag{font-family:var(--f-num);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+label.f{display:grid;gap:3px;font-size:.82rem;color:var(--muted);min-width:0;align-content:start}
+label.f span.u{font-family:var(--f-num);font-size:.7rem}
+input,select{width:100%;font:500 1rem var(--f-num);color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:9px 10px}
+select{font-family:var(--f-body)}
+fieldset{border:0;padding:0;margin:0;display:grid;gap:8px;min-width:0}
+legend{font-weight:600;font-size:.9rem;margin-bottom:6px;display:flex;gap:6px;align-items:center;padding:0}
+.dot{width:10px;height:10px;border-radius:2px;display:inline-block;flex:none}
+.out{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.ro{background:var(--hmi-soft);border:1px solid color-mix(in srgb,var(--hmi) 30%,transparent);border-radius:6px;padding:8px 10px;display:grid;gap:2px}
+.ro b{font:600 1.1rem var(--f-num);color:var(--hmi);font-variant-numeric:tabular-nums}
+.ro b small{font-size:.7rem;font-weight:500;opacity:.8}
+.ro span{font-size:.78rem;color:var(--muted)}
+.ro.key{background:var(--resin-soft);border-color:color-mix(in srgb,var(--resin) 35%,transparent)}
+.ro.key b{color:var(--resin)}
+.note{font-size:.84rem;color:var(--muted);border-left:3px solid var(--line);padding-left:10px;max-width:70ch}
+.note.alert{border-color:var(--warn);color:var(--ink)}
+.seg{display:inline-flex;background:var(--sunk);border-radius:8px;padding:3px;gap:3px}
+.seg button{font:600 .85rem var(--f-body);border:0;background:none;color:var(--muted);padding:6px 14px;border-radius:6px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0/.15)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:500 .82rem var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.search{font-family:var(--f-body)}
+details.fault{background:var(--surface);border:1px solid var(--line);border-radius:10px;border-left:5px solid var(--sev)}
+details.fault[data-sev="crit"]{--sev:var(--crit)}
+details.fault[data-sev="warn"]{--sev:var(--warn)}
+details.fault[data-sev="info"]{--sev:var(--hmi)}
+details.fault summary{list-style:none;cursor:pointer;padding:12px 14px;display:grid;gap:4px}
+details.fault summary::-webkit-details-marker{display:none}
+.fhead{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
+.fhead h3{font-size:.97rem}
+.pill{flex:none;font:600 .68rem var(--f-body);letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.pill.crit{background:var(--crit-soft);color:var(--crit)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.info{background:var(--hmi-soft);color:var(--hmi)}
+.fmeta{font-size:.76rem;color:var(--muted);overflow-wrap:anywhere}
+.fmeta code{font-family:var(--f-num)}
+.fbody{padding:0 14px 14px;display:grid;gap:10px;font-size:.9rem}
+.fbody h4{margin:0;font-size:.72rem;color:var(--muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.fbody ul,.fbody ol{margin:4px 0 0;padding-left:20px}
+.fbody li+li{margin-top:2px}
+.danger{background:var(--crit-soft);color:var(--crit);border-radius:6px;padding:8px 10px;font-size:.84rem}
+table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:520px}
+.tbl{overflow-x:auto}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.72rem;color:var(--muted);font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+td.n{font-family:var(--f-num);white-space:nowrap;font-variant-numeric:tabular-nums}
+.area h3{display:flex;gap:8px;align-items:center;font-size:1.05rem}
+.area ul{margin:0;padding-left:20px;font-size:.9rem}
+.check{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed var(--line);cursor:pointer}
+.check:last-child{border-bottom:0}
+.check input{width:20px;height:20px;flex:none;margin-top:2px;accent-color:var(--ok)}
+.check.done span{color:var(--muted);text-decoration:line-through}
+.progress{height:6px;background:var(--sunk);border-radius:99px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+.btn{font:600 .85rem var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 14px;border-radius:6px;cursor:pointer}
+.btn.primary{background:var(--resin);border-color:var(--resin);color:#fff}
+.empty{color:var(--muted);text-align:center;padding:20px}
+.install{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--resin-soft);border:1px solid color-mix(in srgb,var(--resin) 35%,transparent);border-radius:10px;padding:12px 14px;font-size:.9rem}
+footer{color:var(--muted);font-size:.78rem;text-align:center;padding-block:0 28px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand"><h1>Glue Kitchen Guide</h1><small>PARTICLEBOARD · GLUING OPERATOR</small></div>
+    <nav role="tablist" id="tabs">
+      <button role="tab" data-t="calc" aria-selected="true">Calculators</button>
+      <button role="tab" data-t="faults" aria-selected="false">Faults</button>
+      <button role="tab" data-t="areas" aria-selected="false">Areas</button>
+      <button role="tab" data-t="ref" aria-selected="false">Reference</button>
+      <button role="tab" data-t="check" aria-selected="false">Shift check</button>
+      <button role="tab" data-t="terms" aria-selected="false">Glossary</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<!-- ================= CALCULATORS ================= -->
+<section class="wrap" id="calc">
+  <div class="install" id="installBar" hidden>
+    <span>Install this app on your phone so it works offline.</span>
+    <button class="btn primary" id="installBtn">Install</button>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div><div class="tag">Recipe · SL / CL</div><h2>Full layer recipe</h2></div>
+      <div class="seg" id="layerSeg"><button aria-pressed="true" data-l="SL">Surface SL</button><button aria-pressed="false" data-l="CL">Core CL</button></div>
+    </div>
+    <p class="lead">Enter the chip flow and your recipe percentages. You get every component in kg/min and l/min, the moisture of the glued chips, and how much extra water to add. Pre-filled numbers are typical examples; replace them with your plant's recipe. Your entries are saved on this phone.</p>
+
+    <fieldset><legend><span class="dot" style="background:var(--muted)"></span>Chips</legend>
+      <div class="grid">
+        <label class="f">Wet chip flow <span class="u">kg/min</span><input id="r_chip" type="number" inputmode="decimal" step="any" value="52"></label>
+        <label class="f">Chip moisture after dryer <span class="u">% dry basis</span><input id="r_mc" type="number" inputmode="decimal" step="any" value="2.5"></label>
+        <label class="f">Target moisture after gluing <span class="u">%</span><input id="r_tmc" type="number" inputmode="decimal" step="any" value="13"></label>
+      </div>
+    </fieldset>
+    <fieldset><legend><span class="dot" style="background:var(--resin)"></span>UF resin (glue)</legend>
+      <div class="grid">
+        <label class="f">Resin factor (solids / dry chips) <span class="u">%</span><input id="r_rf" type="number" inputmode="decimal" step="any" value="10"></label>
+        <label class="f">Resin solid content <span class="u">%</span><input id="r_rs" type="number" inputmode="decimal" step="any" value="65"></label>
+        <label class="f">Resin density <span class="u">kg/l</span><input id="r_rd" type="number" inputmode="decimal" step="any" value="1.28"></label>
+      </div>
+    </fieldset>
+    <fieldset><legend><span class="dot" style="background:var(--hard)"></span>Hardener</legend>
+      <div class="grid">
+        <label class="f">Dose on resin solids <span class="u">%</span><input id="r_hp" type="number" inputmode="decimal" step="any" value="0.8"></label>
+        <label class="f">Hardener solution strength <span class="u">%</span><input id="r_hs" type="number" inputmode="decimal" step="any" value="30"></label>
+        <label class="f">Solution density <span class="u">kg/l</span><input id="r_hd" type="number" inputmode="decimal" step="any" value="1.15"></label>
+      </div>
+    </fieldset>
+    <fieldset><legend><span class="dot" style="background:var(--line)"></span>Wax emulsion</legend>
+      <div class="grid">
+        <label class="f">Dose on dry chips <span class="u">%</span><input id="r_ep" type="number" inputmode="decimal" step="any" value="0.5"></label>
+        <label class="f">Emulsion solid content <span class="u">%</span><input id="r_es" type="number" inputmode="decimal" step="any" value="58"></label>
+        <label class="f">Density <span class="u">kg/l</span><input id="r_ed" type="number" inputmode="decimal" step="any" value="0.96"></label>
+      </div>
+    </fieldset>
+    <fieldset><legend><span class="dot" style="background:var(--urea)"></span>Urea</legend>
+      <div class="grid">
+        <label class="f">Dose on resin solids <span class="u">%</span><input id="r_up" type="number" inputmode="decimal" step="any" value="3"></label>
+        <label class="f">Urea solution strength <span class="u">%</span><input id="r_us" type="number" inputmode="decimal" step="any" value="40"></label>
+        <label class="f">Density <span class="u">kg/l</span><input id="r_ud" type="number" inputmode="decimal" step="any" value="1.11"></label>
+      </div>
+    </fieldset>
+
+    <div class="tag">Results</div>
+    <div class="out" id="r_out"></div>
+    <p class="note" id="r_note"></p>
+    <div class="row"><span></span><button class="btn" id="r_reset">Reset to examples</button></div>
+  </div>
+
+  <div class="card">
+    <div><div class="tag">Check</div><h2>Actual resin factor</h2></div>
+    <p class="lead">Take the readings from the ProGuide screen and see the resin factor really going onto the chips.</p>
+    <div class="grid">
+      <label class="f">Resin flow (sum of pumps) <span class="u">l/min</span><input id="v_l" type="number" inputmode="decimal" step="any" value="9.4"></label>
+      <label class="f">Resin density <span class="u">kg/l</span><input id="v_d" type="number" inputmode="decimal" step="any" value="1.28"></label>
+      <label class="f">Solid content <span class="u">%</span><input id="v_s" type="number" inputmode="decimal" step="any" value="65"></label>
+      <label class="f">Dry chip flow <span class="u">kg/min</span><input id="v_c" type="number" inputmode="decimal" step="any" value="52"></label>
+    </div>
+    <div class="out" id="v_out"></div>
+  </div>
+
+  <div class="card">
+    <div><div class="tag">Conversion</div><h2>Flow converter</h2></div>
+    <div class="grid">
+      <label class="f">Value<input id="c_v" type="number" inputmode="decimal" step="any" value="9.43"></label>
+      <label class="f">Unit<select id="c_u"><option value="lmin">l/min</option><option value="kgmin">kg/min</option><option value="th">t/h</option><option value="lh">l/h</option></select></label>
+      <label class="f">Density <span class="u">kg/l</span><input id="c_d" type="number" inputmode="decimal" step="any" value="1.28"></label>
+    </div>
+    <div class="out" id="c_out"></div>
+  </div>
+
+  <div class="card">
+    <div><div class="tag">Silo / Tank</div><h2>Tank volume and time left</h2></div>
+    <p class="lead">For vertical cylindrical glue silos and day tanks.</p>
+    <div class="grid">
+      <label class="f">Inside diameter <span class="u">m</span><input id="t_dia" type="number" inputmode="decimal" step="any" value="3.5"></label>
+      <label class="f">Liquid height <span class="u">m</span><input id="t_h" type="number" inputmode="decimal" step="any" value="5.2"></label>
+      <label class="f">Total cylinder height <span class="u">m</span><input id="t_H" type="number" inputmode="decimal" step="any" value="8"></label>
+      <label class="f">Product density <span class="u">kg/l</span><input id="t_d" type="number" inputmode="decimal" step="any" value="1.28"></label>
+      <label class="f">Consumption <span class="u">kg/min</span><input id="t_c" type="number" inputmode="decimal" step="any" value="30"></label>
+    </div>
+    <div class="out" id="t_out"></div>
+    <p class="note">Flat-bottom cylinder. For a cone bottom, add the cone volume: π × r² × h ÷ 3.</p>
+  </div>
+
+  <div class="card">
+    <div><div class="tag">Consumption</div><h2>Resin use from production</h2></div>
+    <div class="grid">
+      <label class="f">Production <span class="u">m³/h</span><input id="p_v" type="number" inputmode="decimal" step="any" value="25"></label>
+      <label class="f">Board density <span class="u">kg/m³</span><input id="p_d" type="number" inputmode="decimal" step="any" value="640"></label>
+      <label class="f">Board moisture <span class="u">%</span><input id="p_m" type="number" inputmode="decimal" step="any" value="7"></label>
+      <label class="f">Average resin factor <span class="u">%</span><input id="p_f" type="number" inputmode="decimal" step="any" value="8"></label>
+      <label class="f">Solid content <span class="u">%</span><input id="p_s" type="number" inputmode="decimal" step="any" value="65"></label>
+    </div>
+    <div class="out" id="p_out"></div>
+    <p class="note">Average factor ≈ (SL factor × SL share) + (CL factor × CL share). Example: 35% surface at 10% and 65% core at 7% gives 8.05%.</p>
+  </div>
+</section>
+
+<!-- ================= FAULTS ================= -->
+<section class="wrap" id="faults" hidden>
+  <div class="card">
+    <div><div class="tag">Troubleshooting</div><h2>Faults: causes and fixes</h2></div>
+    <input class="search" id="f_q" type="search" placeholder="Search: pressure, flow, temperature, BGS112…">
+    <div class="chips" id="f_chips"></div>
+  </div>
+  <div id="f_list" style="display:grid;gap:10px"></div>
+</section>
+
+<!-- ================= AREAS ================= -->
+<section class="wrap" id="areas" hidden></section>
+
+<!-- ================= REFERENCE ================= -->
+<section class="wrap" id="ref" hidden>
+  <div class="card">
+    <div><div class="tag">Typical values</div><h2>Reference values</h2></div>
+    <p class="note">Typical values for UF-bonded particleboard. Your plant's recipe and the supplier's technical data sheet always come first.</p>
+    <div class="tbl"><table>
+      <thead><tr><th>Material</th><th>Property</th><th>Typical value</th><th>Note</th></tr></thead>
+      <tbody id="ref_rows"></tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <div><div class="tag">Formulas</div><h2>Core formulas</h2></div>
+    <div class="tbl"><table>
+      <tbody>
+        <tr><td>Dry chips</td><td class="n">dry = wet ÷ (1 + MC/100)</td></tr>
+        <tr><td>Liquid resin</td><td class="n">resin kg/min = dry × RF% ÷ solids%</td></tr>
+        <tr><td>kg to litres</td><td class="n">l/min = kg/min ÷ density</td></tr>
+        <tr><td>Hardener</td><td class="n">hard kg = resin solids × H% ÷ strength%</td></tr>
+        <tr><td>Emulsion</td><td class="n">emul kg = dry × E% ÷ solids%</td></tr>
+        <tr><td>Glued chip moisture</td><td class="n">MC = total water ÷ (dry wood + all solids)</td></tr>
+        <tr><td>t/h</td><td class="n">t/h = kg/min × 0.06</td></tr>
+        <tr><td>Cylinder volume</td><td class="n">V (m³) = π × D² ÷ 4 × h</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- ================= CHECKLIST ================= -->
+<section class="wrap" id="check" hidden>
+  <div class="card">
+    <div class="row"><div><div class="tag">Shift round</div><h2>Start-of-shift check</h2></div><button class="btn" id="ck_reset">Clear all</button></div>
+    <div class="progress"><i id="ck_bar"></i></div>
+    <p class="lead" id="ck_txt"></p>
+  </div>
+  <div id="ck_list" style="display:grid;gap:16px"></div>
+</section>
+
+<!-- ================= GLOSSARY ================= -->
+<section class="wrap" id="terms" hidden>
+  <div class="card">
+    <div><div class="tag">Lexicon</div><h2>Glossary</h2></div>
+    <div class="tbl"><table>
+      <thead><tr><th>English</th><th>Français</th><th>العربية</th><th>Meaning</th></tr></thead>
+      <tbody id="term_rows"></tbody>
+    </table></div>
+  </div>
+</section>
+</main>
+<footer class="wrap">Glue Kitchen Guide · v1.0 · Works offline once installed</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const num=id=>{const v=parseFloat($(id).value);return isFinite(v)?v:0};
+const f=(x,d=2)=>isFinite(x)?x.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
+const ro=(label,val,unit,key)=>`<div class="ro${key?' key':''}"><span>${label}</span><b>${val} <small>${unit}</small></b></div>`;
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- tabs ---------- */
+const SECTIONS=['calc','faults','areas','ref','check','terms'];
+const tabs=[...document.querySelectorAll('#tabs button')];
+function show(t){tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));
+  SECTIONS.forEach(s=>$(s).hidden=s!==t); store.set('gk_tab',t); window.scrollTo(0,0)}
+tabs.forEach(b=>b.onclick=()=>show(b.dataset.t));
+
+/* ---------- saved inputs ---------- */
+const INPUTS=[...document.querySelectorAll('#calc input,#calc select')].map(e=>e.id);
+const DEFAULTS=Object.fromEntries(INPUTS.map(id=>[id,$(id).value]));
+const saved=store.get('gk_inputs',{});
+INPUTS.forEach(id=>{if(saved[id]!=null)$(id).value=saved[id]});
+function saveInputs(){store.set('gk_inputs',Object.fromEntries(INPUTS.map(id=>[id,$(id).value])))}
+
+/* ---------- recipe ---------- */
+const presets={SL:{r_chip:52,r_mc:2.5,r_tmc:13,r_rf:10,r_hp:0.8,r_ep:0.5,r_up:3},
+               CL:{r_chip:61,r_mc:2.5,r_tmc:7.5,r_rf:7,r_hp:2,r_ep:0.5,r_up:3}};
+const layerVals=store.get('gk_layers',{SL:null,CL:null});
+let layer=store.get('gk_layer','SL');
+const LAYER_KEYS=Object.keys(presets.SL);
+function setLayerUI(){document.querySelectorAll('#layerSeg button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.l===layer))}
+document.querySelectorAll('#layerSeg button').forEach(b=>b.onclick=()=>{
+  if(b.dataset.l===layer)return;
+  layerVals[layer]=Object.fromEntries(LAYER_KEYS.map(k=>[k,$(k).value]));
+  layer=b.dataset.l; const v=layerVals[layer]||presets[layer];
+  LAYER_KEYS.forEach(k=>$(k).value=v[k]);
+  store.set('gk_layers',layerVals); store.set('gk_layer',layer); setLayerUI(); recipe(); saveInputs()});
+setLayerUI();
+$('r_reset').onclick=()=>{INPUTS.filter(i=>i.startsWith('r_')).forEach(i=>$(i).value=DEFAULTS[i]);
+  LAYER_KEYS.forEach(k=>$(k).value=presets[layer][k]); layerVals[layer]=null; store.set('gk_layers',layerVals); recipe(); saveInputs()};
+
+function recipe(){
+  const wet=num('r_chip'),mc=num('r_mc')/100,tmc=num('r_tmc')/100;
+  const dry=wet/(1+mc), chipW=wet-dry;
+  const rs=num('r_rs')/100, rSol=dry*num('r_rf')/100, rKg=rs?rSol/rs:0, rL=rKg/(num('r_rd')||1);
+  const hs=num('r_hs')/100, hSol=rSol*num('r_hp')/100, hKg=hs?hSol/hs:0, hL=hKg/(num('r_hd')||1);
+  const es=num('r_es')/100, eSol=dry*num('r_ep')/100, eKg=es?eSol/es:0, eL=eKg/(num('r_ed')||1);
+  const us=num('r_us')/100, uSol=rSol*num('r_up')/100, uKg=us?uSol/us:0, uL=uKg/(num('r_ud')||1);
+  const solids=rSol+hSol+eSol+uSol;
+  const water=chipW+(rKg-rSol)+(hKg-hSol)+(eKg-eSol)+(uKg-uSol);
+  const base=dry+solids, mcNow=base?water/base*100:0, addW=tmc*base-water;
+  const mix=rKg+hKg+eKg+uKg+Math.max(addW,0);
+  $('r_out').innerHTML=
+    ro('Dry chips',f(dry),'kg/min')+
+    ro('Resin',f(rKg)+' · '+f(rL),'kg · l/min',1)+
+    ro('Hardener',f(hKg)+' · '+f(hL),'kg · l/min')+
+    ro('Emulsion',f(eKg)+' · '+f(eL),'kg · l/min')+
+    ro('Urea',f(uKg)+' · '+f(uL),'kg · l/min')+
+    ro('Extra water',f(Math.max(addW,0)),'l/min',1)+
+    ro('Moisture without water',f(mcNow,1),'%')+
+    ro('Total mix',f(mix),'kg/min');
+  const n=$('r_note');
+  if(addW<0){n.className='note alert';n.textContent=`Moisture without added water (${f(mcNow,1)}%) is already above target by ${f(-addW)} kg/min of water. Do not add water; check dryer moisture or component strengths.`}
+  else{n.className='note';n.textContent=`To reach ${f(tmc*100,1)}%, add ${f(addW)} l/min of water. Resin solids = ${f(rSol)} kg/min. Dry chip throughput = ${f(dry*0.06)} t/h.`}
+}
+
+function verify(){const kg=num('v_l')*num('v_d'),sol=kg*num('v_s')/100,c=num('v_c');
+  $('v_out').innerHTML=ro('Resin',f(kg),'kg/min')+ro('Resin solids',f(sol),'kg/min')+ro('Actual resin factor',c?f(sol/c*100):'—','%',1)}
+
+function conv(){const v=num('c_v'),d=num('c_d')||1,u=$('c_u').value;let l=0;
+  if(u==='lmin')l=v;if(u==='kgmin')l=v/d;if(u==='th')l=v*1000/60/d;if(u==='lh')l=v/60;
+  const kg=l*d;$('c_out').innerHTML=ro('l/min',f(l),'')+ro('kg/min',f(kg),'')+ro('t/h',f(kg*0.06,3),'')+ro('l/h',f(l*60,0),'')+ro('Per 8 h shift',f(kg*480/1000),'t',1)}
+
+function tank(){const r=num('t_dia')/2,h=num('t_h'),H=num('t_H'),d=num('t_d'),c=num('t_c');
+  const V=Math.PI*r*r*h,Vt=Math.PI*r*r*H,kg=V*1000*d,min=c?kg/c:0;
+  $('t_out').innerHTML=ro('Current volume',f(V),'m³')+ro('Total capacity',f(Vt),'m³')+ro('Fill level',Vt?f(h/H*100,0):'—','%')+
+   ro('Mass',f(kg/1000),'t',1)+ro('Lasts about',c?f(min/60,1):'—','h',1)+ro('Every 10 cm =',f(Math.PI*r*r*0.1*1000,0),'l')}
+
+function prod(){const m=num('p_v')*num('p_d')/(1+num('p_m')/100),rf=num('p_f')/100,s=num('p_s')/100;
+  const sol=m*rf/(1+rf),liq=s?sol/s:0;
+  $('p_out').innerHTML=ro('Dry board mass',f(m/1000),'t/h')+ro('Liquid resin',f(liq/1000,3),'t/h',1)+ro('Per 8 h shift',f(liq*8/1000),'t')+ro('Per 24 h day',f(liq*24/1000),'t',1)+ro('Per m³',num('p_v')?f(liq/num('p_v'),1):'—','kg/m³')}
+
+function all(){recipe();verify();conv();tank();prod()}
+INPUTS.forEach(id=>$(id).addEventListener('input',()=>{all();saveInputs()}));
+
+/* ---------- faults ---------- */
+const AREAS={kitchen:'Glue kitchen',silo:'Glue silos',mat:'Chip silos / bins',blend:'Blender',hmi:'HMI & automation',qual:'Board quality'};
+const SEV={crit:'Critical',warn:'Warning',info:'Monitor'};
+const F=[
+ {a:'blend',s:'warn',t:'Blender cooling water outlet temperature high',code:'SL Glue blender, Outlet water temperature warning high · G27_BTT116',
+  c:['Low cooling water flow through the blender jacket, or a valve partly closed','Supply water is already warm (cooling tower or chiller)','Scale or deposits inside the cooling jacket','Temperature sensor BTT116 faulty or loose wire','High blender load or hot chips coming from the dryer'],
+  d:['Compare inlet BTT115 with outlet BTT116: if the inlet is high too, the problem is the cooling source','Open the cooling valves and confirm the pump runs and water actually flows','Check chip temperature after the dryer','Call maintenance if it persists; do not run long with weak cooling'],
+  w:'Heat makes the resin pre-cure inside the blender, building lumps and deposits on the paddles.'},
+ {a:'blend',s:'warn',t:'Blender cooling water inlet temperature high',code:'SL Glue blender, Inlet water temperature warning high · G27_BTT115',
+  c:['Cooling tower or chiller not performing (hot weather)','Low water level in the cooling circuit','Cooling tower fan stopped'],
+  d:['Check the cooling tower and its water level','Inform utilities','If needed, and only with supervisor approval, reduce surface-layer hardener slightly to limit pre-cure']},
+ {a:'blend',s:'crit',t:'Blender cover not closing (mechanic protection)',code:'Glue blender cover not closing … (protection for mechanic) · G27/G37_BGS112',
+  c:['Cover not fully closed or safety latch not engaged','Chips or cured glue on the cover edge or seal','Limit switch BGS112 misaligned, dirty or faulty','A maintenance lock is still fitted (lockout)'],
+  d:['Make sure nobody is working inside or near the blender','Clean the cover edge and the sensor','Close the cover firmly and check the sensor LED','If it stays: electrician to adjust the sensor'],
+  danger:'Never bypass this safety switch. It protects the mechanic from the rotating paddles. Before opening the blender: stop, lock out and tag out (LOTO).'},
+ {a:'hmi',s:'warn',t:'User data failure of hardware component',code:'Error: User data failure of hardware component +UC00-KF030',
+  c:['Lost communication with an I/O module or device on Profibus/Profinet','24 V supply problem in the cabinet','Loose communication cable or damaged connector'],
+  d:['Write down the time and full alarm text','Check whether flows or pumps were affected','Call automation/electrical; do not restart the PLC yourself']},
+ {a:'kitchen',s:'crit',t:'Pump running but flow is zero or very low',code:'high rpm + l/min = 0',
+  c:['Day tank empty','Suction valve closed','Suction filter blocked','Air in the suction line','Worn stator on the progressive cavity pump','Broken coupling','Magnetic flow meter not full or electrodes coated'],
+  d:['Check the day tank level','Open valves and follow the line','Clean the filter','Bleed air at the vent point','Do a bucket test (container + stopwatch) to tell a pump fault from a meter fault'],
+  danger:'Running a progressive cavity pump dry destroys the stator within minutes.'},
+ {a:'kitchen',s:'warn',t:'Flow fluctuates and will not hold setpoint',code:'unstable l/min',
+  c:['Air in the line or foam in the tank','Resin viscosity changed (old or cold resin)','Pump wear','Poor PID tuning','Bubbles disturbing the flow meter'],
+  d:['Check tank level and that no air is drawn in','Check resin viscosity and temperature','Watch rpm vs flow: if rpm rises for the same flow, the pump is wearing','Ask automation to retune the loop']},
+ {a:'kitchen',s:'crit',t:'High pressure in resin or hardener line',code:'high bar',
+  c:['Blocked line or nozzles/lances in the blender','Cured glue in the pipe or static mixer','Valve closed downstream of the pump','Pressure filter clogged'],
+  d:['Stop the pump at once if pressure exceeds the limit','Open the line and flush with water','Clean nozzles and filters','Find why it cured (too much hardener, heat, long stop)'],
+  danger:'Never open a joint or hose under pressure. Stop the pump, relieve the pressure first, wear goggles and gloves.'},
+ {a:'kitchen',s:'warn',t:'Low pressure with high pump speed',code:'bar ↓ rpm ↑',
+  c:['Worn stator/rotor','Leak in the line','Suction filter partly blocked'],
+  d:['Look for the leak','Clean the filter','Plan a stator change with maintenance']},
+ {a:'kitchen',s:'crit',t:'Glue gelling in the static mixer or line',code:'pre-gelling',
+  c:['Hardener dose too high','Hardener mixed with resin too long before use','Line or resin temperature high','Production stopped without flushing'],
+  d:['On any stop longer than the pot life: flush static mixer and lines with water','Check the hardener dose in the recipe','Measure gel time of the mix'],
+  danger:'The rule: every stop means a flush. Cured glue inside a line means dismantling and hours of work.'},
+ {a:'kitchen',s:'warn',t:'Hardener crystallising and blocking the line',code:'hardener crystals',
+  c:['Cold weather (night, winter) with a strong solution','Water evaporating from an open tank'],
+  d:['Keep the room above 10 °C','Close the tank','Flush the line with warm water','Use the strength specified by the supplier']},
+ {a:'kitchen',s:'warn',t:'Wax emulsion separated or broken (layer on top or lumps)',code:'broken emulsion',
+  c:['Freezing or high temperature','Contamination with hardener or acid','Strong mechanical shear (long mixing)','Storage time exceeded'],
+  d:['Do not use it without the lab’s approval','Stir the tank gently','Make sure emulsion does not meet hardener before the blender']},
+ {a:'kitchen',s:'info',t:'Day tank level not changing or level alarm',code:'tank level',
+  c:['Level sensor dirty or faulty','Transfer pump from the silo stopped','Silo empty'],
+  d:['Compare the screen with the real level (look or dipstick)','Check the transfer pump and its valves','Clean the sensor']},
+ {a:'silo',s:'warn',t:'Resin viscosity in the silo has risen',code:'viscosity ↑',
+  c:['Resin is old (past shelf life)','High storage temperature (summer) speeds up condensation','FIFO not respected'],
+  d:['Measure viscosity and gel time','Use the oldest batch first','Keep 15–25 °C','Ask the lab whether the recipe needs adjusting (water or hardener)']},
+ {a:'silo',s:'info',t:'New resin batch has different solid content',code:'solid content',
+  c:['Change at the supplier or batch'],
+  d:['Ask for the batch certificate or a lab measurement','Enter the new value in the recipe so the resin solids factor stays right (use the calculator)']},
+ {a:'silo',s:'warn',t:'Air diaphragm transfer pump not working or weak',code:'diaphragm pump',
+  c:['Compressed air pressure low','Diaphragm torn','Balls or seats stuck with cured glue','Suction hose blocked or drawing air'],
+  d:['Check air pressure (usually 4–6 bar) and the valve','Glue coming out of the air exhaust = torn diaphragm','Flush the pump with water after each transfer']},
+ {a:'silo',s:'crit',t:'Resin or hardener leak or spill',code:'leak',
+  c:['Damaged joint or gasket','Overflow during filling','Manhole not tight'],
+  d:['Stop filling or the pump','Wear PPE','Contain with absorbent and collect','Inform the supervisor'],
+  danger:'UF resin releases formaldehyde. Good ventilation, goggles and gloves. If it reaches the eyes: rinse 15 minutes with water.'},
+ {a:'mat',s:'warn',t:'Bridging or rat-holing in the bin, chip flow drops',code:'bridging',
+  c:['Wet or very fine chips','Chips sitting too long in the bin','Discharge screw worn or slow'],
+  d:['Use the vibrator or bridge breaker','Never enter the bin','Check dryer moisture'],
+  danger:'Entry into a silo or bin is forbidden without a confined-space permit. Risk of engulfment and suffocation.'},
+ {a:'mat',s:'crit',t:'Chip flow (belt scale) reading wrong',code:'belt scale',
+  c:['Belt scale not calibrated','Chips built up on the belt or load cell','Belt off track'],
+  d:['Remember: the whole recipe is built on this number. 5% scale error = 5% resin error','Clean the scale','Ask for regular calibration']},
+ {a:'mat',s:'warn',t:'Chip moisture after the dryer out of range',code:'chip moisture',
+  c:['Raw wood moisture changed','Dryer temperature','Change in dryer infeed'],
+  d:['Recalculate extra water in the calculator','High moisture: reduce added water','Inform the dryer operator']},
+ {a:'mat',s:'crit',t:'Spark or fire alarm in conveying or silo',code:'spark detection',
+  c:['Metal object or stone','Spark from the dryer','Friction in a screw or fan'],
+  d:['Follow the plant’s emergency procedure','Do not open the silo','Confirm the extinguishing system works'],
+  danger:'Wood dust is explosive. Any smoke or burning smell: raise the alarm at once.'},
+ {a:'blend',s:'warn',t:'High motor current or blender trip on overload',code:'motor overload',
+  c:['Glue and chip build-up on paddles and wall','Too much chip infeed','Chips too wet','Damaged bearing'],
+  d:['Reduce flow','Schedule a blender cleaning','Listen for abnormal noise and inform mechanics']},
+ {a:'blend',s:'warn',t:'Glue balls or lumps in the glued chips',code:'glue balls',
+  c:['Nozzle dripping or partly blocked','Chip flow stopped while glue kept running','Blender temperature high','Worn paddles'],
+  d:['Inspect and clean nozzles','Make sure glue dosing is interlocked with chip flow','Check cooling water']},
+ {a:'qual',s:'crit',t:'Blows / blisters in boards leaving the press',code:'blows',
+  c:['Glued chip moisture too high','Too much glue or water in the core','Degassing time too short'],
+  d:['Measure surface and core moisture after the blender','Reduce added water','Inform the press operator']},
+ {a:'qual',s:'warn',t:'Low internal bond (IB)',code:'internal bond',
+  c:['Core resin factor too low','Pre-cure','Poor distribution in the blender','Moisture too low'],
+  d:['Check the actual resin factor with the calculator','Check hardener and nozzles','Review with the lab']},
+ {a:'qual',s:'warn',t:'Soft surface or peeling after sanding',code:'soft surface',
+  c:['Not enough surface resin','Surface moisture too low','Pre-cure before the press'],
+  d:['Check SL resin factor and moisture','Reduce SL hardener if pre-cure is found']},
+ {a:'qual',s:'warn',t:'High thickness swelling',code:'TS 24h',
+  c:['Wax emulsion dose low or stopped','Not enough resin'],
+  d:['Check emulsion flow and that the pump runs','Check emulsion condition in the tank']},
+ {a:'qual',s:'info',t:'High formaldehyde emission',code:'E1 / E0.5',
+  c:['Not enough urea scavenger','Resin type','Press temperature or time'],
+  d:['Check urea flow','Follow the lab’s instructions']}
+];
+let fArea='all';
+$('f_chips').innerHTML=[['all','All'],...Object.entries(AREAS)].map(([k,v])=>`<button class="chip" data-a="${k}" aria-pressed="${k==='all'}">${v}</button>`).join('');
+$('f_chips').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;fArea=b.dataset.a;
+  document.querySelectorAll('#f_chips .chip').forEach(x=>x.setAttribute('aria-pressed',x===b));renderF()};
+$('f_q').oninput=renderF;
+function renderF(){const q=$('f_q').value.trim().toLowerCase();
+  const list=F.filter(x=>(fArea==='all'||x.a===fArea)&&(!q||JSON.stringify(x).toLowerCase().includes(q)));
+  $('f_list').innerHTML=list.length?list.map(x=>`<details class="fault" data-sev="${x.s}"><summary>
+    <div class="fhead"><h3>${x.t}</h3><span class="pill ${x.s}">${SEV[x.s]}</span></div>
+    <div class="fmeta">${AREAS[x.a]} · <code>${x.code}</code></div></summary>
+    <div class="fbody"><div><h4>Possible causes</h4><ul>${x.c.map(i=>`<li>${i}</li>`).join('')}</ul></div>
+    <div><h4>What to do</h4><ol>${x.d.map(i=>`<li>${i}</li>`).join('')}</ol></div>
+    ${x.w?`<p class="note">${x.w}</p>`:''}${x.danger?`<div class="danger">${x.danger}</div>`:''}</div></details>`).join('')
+    :'<p class="empty">No match. Try another word.</p>'}
+renderF();
+
+/* ---------- areas ---------- */
+const AR=[
+ {k:'Glue kitchen',fr:'Cuisine de colle',col:'var(--resin)',
+  role:'Prepares and meters each component and sends it to the surface (SL) and core (CL) blenders. Each component has a day tank, a variable-speed progressive cavity pump, a magnetic flow meter and pressure gauges.',
+  watch:['Actual flow (l/min) matches setpoint','Pressure: high = blockage; low with high rpm = wear or air','Day tank levels','No leaks under the pumps','Flush with water on every stop']},
+ {k:'Glue silos',fr:'Stockage colle',col:'var(--hmi)',
+  role:'Bulk storage for UF resin, wax emulsion, urea and hardener, with transfer to the day tanks by air diaphragm pump or electric pump.',
+  watch:['Storage temperature 15–25 °C','Arrival date of each batch, FIFO','Viscosity and solids of every new batch','Ladder and railing: never climb unprotected','Ventilation when opening hatches']},
+ {k:'Chip silos and dosing bins',fr:'Silos copeaux · Bins de dosage',col:'var(--muted)',
+  role:'Store dry chips after drying and screening, separated into surface (fine) and core (coarse). Bins discharge by screw or belt onto the belt scale, which gives the chip flow for the recipe.',
+  watch:['Level between min and max','Chip moisture','Scale calibration','Spark detection and extinguishing system','Bridging and blockages']},
+ {k:'Blender',fr:'Encolleuse',col:'var(--hard)',
+  role:'Horizontal high-speed paddle mixer that sprays glue onto the chips through nozzles or lances. A water-cooled jacket prevents pre-cure. There is one blender for the surface layer and one for the core.',
+  watch:['Cooling water in and out temperatures','Motor current','Nozzle condition','Safety cover closed','No glue lumps in the outgoing chips']},
+ {k:'ProGuide HMI',fr:'Supervision Dieffenbacher',col:'var(--ok)',
+  role:'The Overview Gluing screen shows each component: pressure before and after the pump, rpm and flow in l/min, plus each layer’s data. The alarm bar is at the bottom.',
+  watch:['Read alarms newest first (top)','Red = fault, yellow/orange = warning','Log every repeating alarm with its time','Never change the recipe without permission']}
+];
+$('areas').innerHTML=AR.map(a=>`<div class="card area"><div><div class="tag">${a.fr}</div>
+ <h3><span class="dot" style="background:${a.col}"></span>${a.k}</h3></div><p>${a.role}</p>
+ <div><div class="tag" style="margin-bottom:4px">What to watch</div><ul>${a.watch.map(w=>`<li>${w}</li>`).join('')}</ul></div></div>`).join('');
+
+/* ---------- reference ---------- */
+const R=[
+ ['UF resin','Solid content','64 – 67 %','Lab-tested for each batch'],
+ ['UF resin','Density','1.27 – 1.29 kg/l','At 20 °C'],
+ ['UF resin','Viscosity','150 – 400 mPa·s','Rises with age and heat'],
+ ['UF resin','pH','7.5 – 9',''],
+ ['UF resin','Shelf life','1 – 2 months','At 20 °C, less in summer'],
+ ['UF resin','Storage temperature','15 – 25 °C',''],
+ ['Resin factor','Surface SL','9 – 12 %','Solids on dry chips'],
+ ['Resin factor','Core CL','6 – 8 %','Solids on dry chips'],
+ ['Hardener','Solution strength','20 – 40 %','Ammonium sulphate or nitrate'],
+ ['Hardener','Core CL dose','1.5 – 3 %','On resin solids'],
+ ['Hardener','Surface SL dose','0 – 1.5 %','Lower, to avoid pre-cure'],
+ ['Wax emulsion','Solid content','50 – 60 %','Paraffin'],
+ ['Wax emulsion','Dose','0.3 – 1 %','On dry chips'],
+ ['Urea','Solution strength','40 %',''],
+ ['Chips','After dryer','1.5 – 3 %','Moisture, dry basis'],
+ ['Glued chips','Surface SL','11 – 15 %','Moisture'],
+ ['Glued chips','Core CL','6 – 9 %','Moisture'],
+ ['Glue mix','Gel time','40 – 90 s','At 100 °C, depends on hardener'],
+ ['Cooling water','Inlet temperature','< 20 – 25 °C','Per alarm limits']
+];
+$('ref_rows').innerHTML=R.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td class="n">${r[2]}</td><td>${r[3]}</td></tr>`).join('');
+
+/* ---------- checklist ---------- */
+const CK={'Safety':['Goggles, gloves and safety boots on','Eye wash station works','No spills on the floor'],
+ 'Glue silos':['Level of each silo recorded','Storage room temperature OK','No leaks around hatches and pumps','Batch in use is the oldest'],
+ 'Glue kitchen':['Day tanks above minimum','Screen flows match the recipe','Pressures normal on every pump','Filters clean','No leaks under the pumps'],
+ 'Blender':['Cooling water in/out temperatures normal','Cover closed, no BGS112 alarm','Outgoing chips free of lumps','Motor sounds normal'],
+ 'Chips and bins':['Bin levels normal','Chip moisture recorded','Spark detection without alarm'],
+ 'HMI':['Alarm list read and logged','Correct recipe loaded']};
+let st=store.get('gk_ck',{});
+function renderCK(){let tot=0,done=0;
+ $('ck_list').innerHTML=Object.entries(CK).map(([g,items])=>`<div class="card"><h3>${g}</h3><div>${items.map((it,i)=>{const id=g+'|'+i;tot++;if(st[id])done++;
+   return `<label class="check${st[id]?' done':''}"><input type="checkbox" id="ck_${tot}" data-k="${id}" ${st[id]?'checked':''}><span>${it}</span></label>`}).join('')}</div></div>`).join('');
+ $('ck_bar').style.width=(done/tot*100)+'%';$('ck_txt').textContent=`${done} of ${tot} items done`}
+$('ck_list').onchange=e=>{const k=e.target.dataset.k;if(!k)return;st[k]=e.target.checked;store.set('gk_ck',st);renderCK()};
+$('ck_reset').onclick=()=>{st={};store.set('gk_ck',st);renderCK()};
+renderCK();
+
+/* ---------- glossary ---------- */
+const T=[['UF resin / glue','Colle / Résine UF','الغراء','Urea-formaldehyde binder'],['Hardener','Durcisseur','المصلب','Speeds up resin cure in the press'],
+ ['Wax emulsion','Émulsion de paraffine','الإمولسيون','Reduces water uptake'],['Solid content','Extrait sec','المادة الصلبة','What remains after the water evaporates'],
+ ['Resin factor','Taux d’encollage','نسبة الغراء','Resin solids ÷ dry chips'],['Chips / particles','Copeaux / Particules','النشارة',''],
+ ['Surface layer (SL)','Couche externe','طبقة السطح','Fine particles'],['Core layer (CL)','Couche interne','طبقة الوسط','Coarse particles'],
+ ['Blender','Encolleuse','الخلاط',''],['Belt scale','Bande peseuse','ميزان الحزام',''],['Gel time','Temps de gel','وقت التجلّط',''],
+ ['Pot life','Durée de vie en pot','مدة صلاحية الخليط',''],['Pre-cure','Pré-durcissement','التصلب المبكر',''],['Viscosity','Viscosité','اللزوجة',''],
+ ['Flow meter','Débitmètre','عداد التدفق','Usually magnetic'],['Progressive cavity pump','Pompe à vis excentrée','مضخة لولبية',''],
+ ['Diaphragm pump','Pompe à membrane','مضخة غشاء','Air-operated'],['Internal bond (IB)','Cohésion interne','التماسك الداخلي',''],
+ ['Thickness swelling','Gonflement','الانتفاخ',''],['Limit switch','Fin de course','حساس نهاية الشوط',''],['Lockout / tagout','Consignation','القفل والبطاقة','']];
+$('term_rows').innerHTML=T.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td dir="rtl" lang="ar">${r[2]}</td><td>${r[3]}</td></tr>`).join('');
+
+all();
+const t0=store.get('gk_tab','calc'); if(SECTIONS.includes(t0)) show(t0);
+
+/* ---------- install / offline ---------- */
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
+let deferred=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('installBar').hidden=false});
+$('installBtn').onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice.catch(()=>{});deferred=null;$('installBar').hidden=true};
+window.addEventListener('appinstalled',()=>{$('installBar').hidden=true});
+</script>
+</body>
+</html>
